@@ -22,13 +22,6 @@ import { DividerElement } from './basic-modules/src/modules/divider/custom-types
 import { ImageElement } from './basic-modules/src/modules/image/custom-types'
 import { TodoElement } from './basic-modules/src/modules/todo/custom-types'
 import { PreElement, CodeElement } from './basic-modules/src/modules/code-block/custom-types'
-import { VideoElement } from './video-module/src/module/custom-types'
-import {
-  TableCellElement,
-  TableRowElement,
-  TableElement,
-} from './table-module/src/module/custom-types'
-import { ListItemElement } from './list-module/src/module/custom-types'
 
 type PureText = {
   text: string
@@ -59,11 +52,6 @@ type CustomElement =
   | TodoElement
   | PreElement
   | CodeElement
-  | VideoElement
-  | TableCellElement
-  | TableRowElement
-  | TableElement
-  | ListItemElement
 
 declare module 'slate' {
   interface CustomTypes {

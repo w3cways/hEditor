@@ -19,27 +19,7 @@ cd ../basic-modules
 rm -rf dist # 清空 dist 目录
 yarn "$buildType"
 
-# code-highlight 依赖于 basic-modules 中的 code-block
-cd ../code-highlight
-rm -rf dist # 清空 dist 目录
-yarn "$buildType"
 
-cd ../list-module
-rm -rf dist # 清空 dist 目录
-yarn "$buildType"
-
-cd ../table-module
-rm -rf dist # 清空 dist 目录
-yarn "$buildType"
-
-# upload-image 依赖于 basic-modules 中的 image
-cd ../upload-image-module
-rm -rf dist # 清空 dist 目录
-yarn "$buildType"
-
-cd ../video-module
-rm -rf dist # 清空 dist 目录
-yarn "$buildType"
 
 # editor 依赖于上述的 core + modules
 cd ../editor
