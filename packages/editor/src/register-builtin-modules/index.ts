@@ -4,8 +4,8 @@
  */
 
 // basic-modules
-import '@wangeditor/basic-modules/dist/css/style.css'
-import basicModules from '@wangeditor/basic-modules'
+import '@w3cways-editor/basic-modules/dist/css/style.css'
+import basicModules from '@w3cways-editor/basic-modules'
 
 import registerModule from './register'
 

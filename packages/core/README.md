@@ -1,3 +1,8 @@
+# w3cways-editor 
+基于wangEditor做了二次开发，修复了中文输入时的各种问题
+
+
+
 # wangEditor core
 
 [wangEditor](https://www.wangeditor.com/) core.

@@ -4,7 +4,7 @@
  */
 
 import { Editor, Range } from 'slate'
-import { IDropPanelMenu, IDomEditor, DomEditor, t } from '@wangeditor/core'
+import { IDropPanelMenu, IDomEditor, DomEditor, t } from '@w3cways-editor/core'
 import $, { Dom7Array, DOMElement } from '../../../utils/dom'
 import { CLEAN_SVG } from '../../../constants/icon-svg'
 

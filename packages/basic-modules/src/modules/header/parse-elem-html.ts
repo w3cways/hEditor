@@ -5,7 +5,7 @@
 
 import { Descendant, Text } from 'slate'
 import $, { DOMElement } from '../../utils/dom'
-import { IDomEditor } from '@wangeditor/core'
+import { IDomEditor } from '@w3cways-editor/core'
 import {
   Header1Element,
   Header2Element,

@@ -3,7 +3,7 @@
  * @author wangfupeng
  */
 
-import { i18nAddResources } from '@wangeditor/core'
+import { i18nAddResources } from '@w3cways-editor/core'
 import enResources from './en'
 import zhResources from './zh-CN'
 

@@ -3,7 +3,7 @@
  * @author wangfupeng
  */
 
-import { IModuleConf } from '@wangeditor/core'
+import { IModuleConf } from '@w3cways-editor/core'
 import { renderStyle } from './render-style'
 import { styleToHtml } from './style-to-html'
 import { preParseHtmlConf } from './pre-parse-html'
