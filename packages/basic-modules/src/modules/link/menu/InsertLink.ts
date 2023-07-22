@@ -10,7 +10,7 @@ import {
   genModalInputElems,
   genModalButtonElems,
   t,
-} from '@wangeditor/core'
+} from '@w3cways-editor/core'
 import $, { Dom7Array, DOMElement } from '../../../utils/dom'
 import { genRandomStr } from '../../../utils/util'
 import { LINK_SVG } from '../../../constants/icon-svg'

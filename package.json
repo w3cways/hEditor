@@ -1,5 +1,5 @@
 {
-  "name": "@wangeditor-team/wangeditor",
+  "name": "w3cways-editor",
   "private": true,
   "scripts": {
     "test": "cross-env NODE_OPTIONS=--unhandled-rejections=warn jest --detectOpenHandles --passWithNoTests",
@@ -21,7 +21,7 @@
     "cypress:run": "cypress run",
     "e2e:dev": "concurrently \"yarn example\" \"yarn run cypress:open\"",
     "e2e": "concurrently \"yarn example\" \"yarn run cypress:run\"",
-    "example": "lerna exec --scope @wangeditor/editor -- yarn run example"
+    "example": "lerna exec --scope @w3cways-editor/editor -- yarn run example"
   },
   "workspaces": [
     "packages/*"

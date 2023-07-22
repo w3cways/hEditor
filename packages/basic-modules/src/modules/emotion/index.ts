@@ -3,7 +3,7 @@
  * @author wangfupeng
  */
 
-import { IModuleConf } from '@wangeditor/core'
+import { IModuleConf } from '@w3cways-editor/core'
 import { emotionMenuConf } from './menu/index'
 
 const emotion: Partial<IModuleConf> = {

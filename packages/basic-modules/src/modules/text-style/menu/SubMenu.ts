@@ -3,7 +3,7 @@
  * @author wangfupeng
  */
 
-import { t } from '@wangeditor/core'
+import { t } from '@w3cways-editor/core'
 import BaseMenu from './BaseMenu'
 import { SUB_SVG } from '../../../constants/icon-svg'
 

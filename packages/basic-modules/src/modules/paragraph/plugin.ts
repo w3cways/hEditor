@@ -10,7 +10,7 @@ import {
   Node as SlateNode,
   Text as SlateText,
 } from 'slate'
-import { IDomEditor } from '@wangeditor/core'
+import { IDomEditor } from '@w3cways-editor/core'
 
 function deleteHandler(newEditor: IDomEditor): boolean {
   const [nodeEntry] = Editor.nodes(newEditor, {
