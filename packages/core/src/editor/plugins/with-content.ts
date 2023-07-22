@@ -6,7 +6,7 @@
 import { Editor, Node, Text, Path, Operation, Range, Transforms, Element, Descendant } from 'slate'
 import { DomEditor } from '../dom-editor'
 import { IDomEditor } from '../..'
-import { EDITOR_TO_SELECTION, NODE_TO_KEY } from '../../utils/weak-maps'
+import { EDITOR_TO_SELECTION, NODE_TO_KEY, EDITOR_TO_USER_SELECTION } from '../../utils/weak-maps'
 import node2html from '../../to-html/node2html'
 import { genElemId } from '../../render/helper'
 import { Key } from '../../utils/key'
@@ -36,6 +36,16 @@ function insertElemToEditor(editor: IDomEditor, elem: Element) {
   }
 }
 
+const getMatches = (e: Editor, path: Path) => {
+  const matches: [Path, Key][] = []
+  for (const [n, p] of Editor.levels(e, { at: path })) {
+    //@ts-ignore
+    const key = DomEditor.findKey(e, n)
+    matches.push([p, key])
+  }
+  return matches
+}
+
 export const withContent = <T extends Editor>(editor: T) => {
   const e = editor as T & IDomEditor
   const { onChange, insertText, apply, deleteBackward } = e
@@ -53,37 +63,40 @@ export const withContent = <T extends Editor>(editor: T) => {
   e.apply = (op: Operation) => {
     const matches: [Path, Key][] = []
 
+    console.warn('apply', op.type)
+
     switch (op.type) {
       case 'insert_text':
       case 'remove_text':
-      case 'set_node': {
-        for (const [node, path] of Editor.levels(e, { at: op.path })) {
-          // 在当前节点寻找
-          const key = DomEditor.findKey(e, node)
-          matches.push([path, key])
-        }
+      case 'set_node':
+      case 'split_node': {
+        matches.push(...getMatches(e, op.path))
+        break
+      }
+
+      case 'set_selection': {
+        // Selection was manually set, don't restore the user selection after the change.
+        console.error(op, e)
+        EDITOR_TO_USER_SELECTION.get(e)?.unref()
+        EDITOR_TO_USER_SELECTION.delete(e)
         break
       }
 
       case 'insert_node':
-      case 'remove_node':
-      case 'merge_node':
-      case 'split_node': {
-        for (const [node, path] of Editor.levels(e, { at: Path.parent(op.path) })) {
-          // 在父节点寻找
-          const key = DomEditor.findKey(e, node)
-          matches.push([path, key])
-        }
+      case 'remove_node': {
+        matches.push(...getMatches(e, Path.parent(op.path)))
+        break
+      }
+
+      case 'merge_node': {
+        const prevPath = Path.previous(op.path)
+        matches.push(...getMatches(e, prevPath))
         break
       }
 
       case 'move_node': {
-        for (const [node, path] of Editor.levels(e, {
-          at: Path.common(Path.parent(op.path), Path.parent(op.newPath)),
-        })) {
-          const key = DomEditor.findKey(e, node)
-          matches.push([path, key])
-        }
+        const commonPath = Path.common(Path.parent(op.path), Path.parent(op.newPath))
+        matches.push(...getMatches(e, commonPath))
         break
       }
     }

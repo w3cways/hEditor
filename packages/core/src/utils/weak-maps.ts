@@ -5,7 +5,7 @@
 
 import { Emitter } from 'event-emitter'
 import { VNode } from 'snabbdom'
-import { Node, Ancestor, Editor, Path, Range } from 'slate'
+import { Node, Ancestor, Editor, Path, Range, RangeRef } from 'slate'
 import { IDomEditor } from '../editor/interface'
 import TextArea from '../text-area/TextArea'
 import Toolbar from '../menus/bar/Toolbar'
@@ -59,14 +59,28 @@ export const EDITOR_TO_WINDOW: WeakMap<Editor, Window> = new WeakMap()
 /**
  * Weak maps for storing editor-related state.
  */
+export const IS_READ_ONLY: WeakMap<Editor, boolean> = new WeakMap()
 export const IS_FOCUSED: WeakMap<Editor, boolean> = new WeakMap()
 export const IS_DRAGGING: WeakMap<Editor, boolean> = new WeakMap()
 export const IS_CLICKING: WeakMap<Editor, boolean> = new WeakMap()
+
+export const EDITOR_TO_USER_SELECTION: WeakMap<Editor, RangeRef | null> = new WeakMap()
 
 // /**
 //  * Weak map for associating the context `onChange` context with the plugin.
 //  */
 // export const EDITOR_TO_ON_CHANGE = new WeakMap<Editor, () => void>()
+
+/**
+ * Weak maps for saving pending state on composition stage.
+ */
+
+export const EDITOR_TO_SCHEDULE_FLUSH: WeakMap<Editor, () => void> = new WeakMap()
+
+export const EDITOR_TO_PENDING_INSERTION_MARKS: WeakMap<Editor, Partial<Text> | null> =
+  new WeakMap()
+
+export const EDITOR_TO_USER_MARKS: WeakMap<Editor, Partial<Text> | null> = new WeakMap()
 
 // 正在更新，但尚未更新完的节点 path ，临时记录下
 // 例如，table 插入 col ，需要一行一行的插入，在更新期间，不能收到其他的（如 normalize）干扰

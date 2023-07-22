@@ -33,6 +33,8 @@ class TextArea {
   showPlaceholder = false
   $placeholder: Dom7Array | null = null
   private latestEditorSelection: Range | null = null
+  deferredOperations: any = []
+  hasTempSelection: boolean = false
 
   constructor(boxSelector: string | DOMElement) {
     // @ts-ignore 初始化 dom

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -10,6 +11,7 @@
   <link href="./css/editor.css" rel="stylesheet">
   <link href="../dist/css/style.css" rel="stylesheet">
 </head>
+
 <body>
   <p>simple mode</p>
   <p>
@@ -36,9 +38,10 @@
     const editorConfig = {}
     editorConfig.placeholder = '请输入内容123...'
     editorConfig.onChange = (editor) => {
+      console.log(JSON.stringify(editor.selection))
       const contentStr = JSON.stringify(editor.children, null, 2)
       document.getElementById('text-content').innerHTML = contentStr
-      console.log(editor.getHtml())
+      //console.log(editor.getHtml())
     }
 
     const editor = E.createEditor({
@@ -54,6 +57,8 @@
       config: {},
       mode: 'simple'
     })
+    window.editor = editor
   </script>
 </body>
+
 </html>

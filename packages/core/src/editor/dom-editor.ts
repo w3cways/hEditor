@@ -8,6 +8,7 @@ import { Editor, Node, Element, Path, Point, Range, Ancestor, Text } from 'slate
 import type { IDomEditor } from './interface'
 import { Key } from '../utils/key'
 import TextArea from '../text-area/TextArea'
+import { hasEditableTarget, isTargetInsideNonReadonlyVoid, hasTarget } from '../text-area/helpers'
 import Toolbar from '../menus/bar/Toolbar'
 import HoverBar from '../menus/bar/HoverBar'
 import {
@@ -21,6 +22,7 @@ import {
   EDITOR_TO_TOOLBAR,
   EDITOR_TO_HOVER_BAR,
   EDITOR_TO_WINDOW,
+  IS_READ_ONLY,
 } from '../utils/weak-maps'
 import $, {
   DOMElement,
@@ -34,6 +36,8 @@ import $, {
   isDOMSelection,
   hasShadowRoot,
   walkTextNodes,
+  isDOMNode,
+  DOMText,
 } from '../utils/dom'
 import { IS_CHROME, IS_FIREFOX } from '../utils/ua'
 
@@ -274,7 +278,8 @@ export const DomEditor = {
     const texts = Array.from(el.querySelectorAll(selector))
     let start = 0
 
-    for (const text of texts) {
+    for (let i = 0; i < texts.length; i++) {
+      const text = texts[i]
       const domNode = text.childNodes[0] as HTMLElement
 
       if (domNode == null || domNode.textContent == null) {
@@ -285,6 +290,24 @@ export const DomEditor = {
       const attr = text.getAttribute('data-slate-length')
       const trueLength = attr == null ? length : parseInt(attr, 10)
       const end = start + trueLength
+
+      // Prefer putting the selection inside the mark placeholder to ensure
+      // composed text is displayed with the correct marks.
+      const nextText = texts[i + 1]
+      if (point.offset === end && nextText?.hasAttribute('data-slate-mark-placeholder')) {
+        const domText = nextText.childNodes[0]
+
+        domPoint = [
+          // COMPAT: If we don't explicity set the dom point to be on the actual
+          // dom text element, chrome will put the selection behind the actual dom
+          // text element, causing domRange.getBoundingClientRect() calls on a collapsed
+          // selection to return incorrect zero values (https://bugs.chromium.org/p/chromium/issues/detail?id=435438)
+          // which will cause issues when scrolling to it.
+          domText instanceof DOMText ? domText : nextText,
+          nextText.textContent?.startsWith('\uFEFF') ? 1 : 0,
+        ]
+        break
+      }
 
       if (point.offset <= end) {
         const offset = Math.min(length, Math.max(0, point.offset - start))
@@ -416,7 +439,7 @@ export const DomEditor = {
         // `isCollapsed` for a Selection that comes from a ShadowRoot.
         // (2020/08/08)
         // https://bugs.chromium.org/p/chromium/issues/detail?id=447523
-        if (IS_CHROME && hasShadowRoot()) {
+        if (IS_CHROME && hasShadowRoot(anchorNode)) {
           isCollapsed =
             domRange.anchorNode === domRange.focusNode &&
             domRange.anchorOffset === domRange.focusOffset
@@ -436,7 +459,19 @@ export const DomEditor = {
       throw new Error(`Cannot resolve a Slate range from DOM range: ${domRange}`)
     }
 
-    const anchor = DomEditor.toSlatePoint(editor, [anchorNode, anchorOffset], {
+    // COMPAT: Triple-clicking a word in chrome will sometimes place the focus
+    // inside a `contenteditable="false"` DOM node following the word, which
+    // will cause `toSlatePoint` to throw an error. (2023/03/07)
+    if (
+      'getAttribute' in focusNode &&
+      (focusNode as HTMLElement).getAttribute('contenteditable') === 'false' &&
+      (focusNode as HTMLElement).getAttribute('data-slate-void') !== 'true'
+    ) {
+      focusNode = anchorNode
+      focusOffset = anchorNode.textContent?.length || 0
+    }
+
+    let anchor = DomEditor.toSlatePoint(editor, [anchorNode, anchorOffset], {
       exactMatch,
       suppressThrow,
     })
@@ -444,14 +479,52 @@ export const DomEditor = {
       return null as T extends true ? Range | null : Range
     }
 
-    const focus = isCollapsed
+    let focus = isCollapsed
       ? anchor
       : DomEditor.toSlatePoint(editor, [focusNode, focusOffset], { exactMatch, suppressThrow })
     if (!focus) {
       return null as T extends true ? Range | null : Range
     }
 
-    // return { anchor, focus } as unknown as T extends true ? Range | null : Range
+    /**
+     * suppose we have this document:
+     *
+     * { type: 'paragraph',
+     *   children: [
+     *     { text: 'foo ' },
+     *     { text: 'bar' },
+     *     { text: ' baz' }
+     *   ]
+     * }
+     *
+     * a double click on "bar" on chrome will create this range:
+     *
+     * anchor -> [0,1] offset 0
+     * focus  -> [0,1] offset 3
+     *
+     * while on firefox will create this range:
+     *
+     * anchor -> [0,0] offset 4
+     * focus  -> [0,2] offset 0
+     *
+     * let's try to fix it...
+     */
+
+    if (IS_FIREFOX && !isCollapsed && anchorNode !== focusNode) {
+      const isEnd = Editor.isEnd(editor, anchor!, anchor.path)
+      const isStart = Editor.isStart(editor, focus!, focus.path)
+
+      if (isEnd) {
+        const after = Editor.after(editor, anchor as Point)
+        // Editor.after() might return undefined
+        anchor = (after || anchor!) as T extends true ? Point | null : Point
+      }
+
+      if (isStart) {
+        const before = Editor.before(editor, focus as Point)
+        focus = (before || focus!) as T extends true ? Point | null : Point
+      }
+    }
 
     let range: Range = { anchor: anchor as Point, focus: focus as Point }
     // if the selection is a hanging range that ends in a void
@@ -813,5 +886,18 @@ export const DomEditor = {
     }
 
     return false
+  },
+
+  hasSelectableTarget: (editor, target) =>
+    hasEditableTarget(editor, target) || isTargetInsideNonReadonlyVoid(editor, target),
+
+  hasEditableTarget: (editor, target): target is DOMNode =>
+    isDOMNode(target) && DomEditor.hasDOMNode(editor, target, { editable: true }),
+
+  isTargetInsideNonReadonlyVoid: (editor, target) => {
+    if (IS_READ_ONLY.get(editor)) return false
+
+    const slateNode = hasTarget(editor, target) && DomEditor.toSlateNode(editor, target)
+    return Element.isElement(slateNode) && Editor.isVoid(editor, slateNode)
   },
 }

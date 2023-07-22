@@ -3,7 +3,7 @@
  * @author wangfupeng
  */
 
-import { Editor, Range, Element } from 'slate'
+import { Editor, Range, Element, Transforms, Path, Node } from 'slate'
 import { IDomEditor } from '../../editor/interface'
 import { DomEditor } from '../../editor/dom-editor'
 import TextArea from '../TextArea'
@@ -12,9 +12,41 @@ import { IS_SAFARI, IS_CHROME, IS_FIREFOX } from '../../utils/ua'
 import { DOMNode } from '../../utils/dom'
 import { hidePlaceholder } from '../place-holder'
 import { editorSelectionToDOM } from '../syncSelection'
+import { EDITOR_TO_PENDING_INSERTION_MARKS, EDITOR_TO_USER_MARKS } from '../../utils/weak-maps'
 
 const EDITOR_TO_TEXT: WeakMap<IDomEditor, string> = new WeakMap()
 const EDITOR_TO_START_CONTAINER: WeakMap<IDomEditor, DOMNode> = new WeakMap()
+
+function checkPrevNode(editor: IDomEditor, selection: Range) {
+  const curNode = Node.get(editor, selection.anchor.path) //当前选取的node
+  const fragments = editor.getFragment()
+  const [start] = Range.edges(selection)
+  const startPath = start.path
+  if (!!startPath[0] || !!startPath[1]) {
+    const parentNode = Node.parent(editor, startPath)
+    if (parentNode.children.length > 1) {
+      //父节点存在，且子元素大于1
+      const previousPath = Path.previous(startPath)
+
+      // 获取上一个节点
+      const prevNode = Node.get(editor, previousPath) //当前选取的node的上一个节点
+
+      if (
+        prevNode &&
+        Editor.isVoid(editor, prevNode) &&
+        Editor.isInline(editor, prevNode) &&
+        selection.focus.offset === 0
+      ) {
+        //上个节点是inline 且是void,且选区超过2行,且当前selection的起点位置为0
+        console.log(111111, JSON.stringify(selection))
+        return true
+      }
+      return false
+    }
+  }
+
+  return false
+}
 
 /**
  * composition start 事件
@@ -22,38 +54,53 @@ const EDITOR_TO_START_CONTAINER: WeakMap<IDomEditor, DOMNode> = new WeakMap()
  * @param textarea textarea
  * @param editor editor
  */
-export function handleCompositionStart(e: Event, textarea: TextArea, editor: IDomEditor) {
-  const event = e as CompositionEvent
+export function handleCompositionStart(
+  e: CompositionEvent,
+  textarea: TextArea,
+  editor: IDomEditor
+) {
+  console.log('handleCompositionStart', e)
+  if (DomEditor.hasSelectableTarget(editor, e.target)) {
+    textarea.isComposing = true
 
-  if (!hasEditableTarget(editor, event.target)) return
+    const { selection } = editor
+    if (selection) {
+      if (Range.isExpanded(selection) || !e.data) {
+        //加!e.data判断是因为首次选择文字节点，且前面是inline&void节点做了特殊处理，第2次再触发时Range.isExpanded(selection) === false
+        const flag = checkPrevNode(editor, selection)
+        if (flag) {
+          Editor.insertText(editor, ' ')
+          textarea.hasTempSelection = true
+          console.log('插入一个空格')
+        }
+        console.log('deleteFragment')
+        Editor.deleteFragment(editor)
+        Promise.resolve().then(() => {
+          // deleteFragment 会在一个 Promise 后更新 dom，导致浏览器选区不正确
+          // 因此这里延迟一下再设置选区，使选区在正确位置
+          // 这里 model 选区没有发生变化，不能使用 editor.restoreSelection
+          // restoreSelection 会对比前后 model 选区是否相同，相同就不更新了
+          editorSelectionToDOM(textarea, editor, true)
+        })
 
-  const { selection } = editor
-  if (selection && Range.isExpanded(selection)) {
-    Editor.deleteFragment(editor)
-
-    Promise.resolve().then(() => {
-      // deleteFragment 会在一个 Promise 后更新 dom，导致浏览器选区不正确
-      // 因此这里延迟一下再设置选区，使选区在正确位置
-      // 这里 model 选区没有发生变化，不能使用 editor.restoreSelection
-      // restoreSelection 会对比前后 model 选区是否相同，相同就不更新了
-      editorSelectionToDOM(textarea, editor, true)
-    })
+        return
+      }
+      const inline = Editor.above(editor, {
+        match: n => Element.isElement(n) && Editor.isInline(editor, n),
+        mode: 'highest',
+      })
+      if (inline) {
+        const [, inlinePath] = inline
+        if (Editor.isEnd(editor, selection.anchor, inlinePath)) {
+          const point = Editor.after(editor, inlinePath)!
+          Transforms.setSelection(editor, {
+            anchor: point,
+            focus: point,
+          })
+        }
+      }
+    }
   }
-
-  if (selection && Range.isCollapsed(selection)) {
-    // 记录下 dom text ，以便触发 maxLength 时使用
-    const domRange = DomEditor.toDOMRange(editor, selection)
-    const startContainer = domRange.startContainer
-    const curText = startContainer.textContent || ''
-    EDITOR_TO_TEXT.set(editor, curText)
-
-    // 记录下 dom range startContainer
-    EDITOR_TO_START_CONTAINER.set(editor, startContainer)
-  }
-  textarea.isComposing = true
-
-  // 隐藏 placeholder
-  hidePlaceholder(textarea, editor)
 }
 
 /**
@@ -63,6 +110,7 @@ export function handleCompositionStart(e: Event, textarea: TextArea, editor: IDo
  * @param editor editor
  */
 export function handleCompositionUpdate(event: Event, textarea: TextArea, editor: IDomEditor) {
+  console.log('handleCompositionUpdate', event)
   if (!hasEditableTarget(editor, event.target)) return
 
   textarea.isComposing = true
@@ -74,74 +122,44 @@ export function handleCompositionUpdate(event: Event, textarea: TextArea, editor
  * @param textarea textarea
  * @param editor editor
  */
-export function handleCompositionEnd(e: Event, textarea: TextArea, editor: IDomEditor) {
-  const event = e as CompositionEvent
+export function handleCompositionEnd(
+  event: CompositionEvent,
+  textarea: TextArea,
+  editor: IDomEditor
+) {
+  console.warn('handleCompositionEnd', event)
+  if (DomEditor.hasSelectableTarget(editor, event.target)) {
+    if (textarea.isComposing) {
+      textarea.isComposing = false
+    }
 
-  if (!hasEditableTarget(editor, event.target)) return
-  textarea.isComposing = false
+    if (textarea.hasTempSelection) {
+      Editor.deleteBackward(editor)
+      console.log('删除空格')
+      textarea.hasTempSelection = false
+    }
 
-  const { selection } = editor
-  if (selection == null) return
+    // COMPAT: In Chrome, `beforeinput` events for compositions
+    // aren't correct and never fire the "insertFromComposition"
+    // type that we need. So instead, insert whenever a composition
+    // ends since it will already have been committed to the DOM.
+    if (IS_CHROME && event.data) {
+      const placeholderMarks = EDITOR_TO_PENDING_INSERTION_MARKS.get(editor)
+      EDITOR_TO_PENDING_INSERTION_MARKS.delete(editor)
 
-  // 清理可能暴露的 text 节点
-  // 例如 chrome 在链接后面，输入拼音，就会出现有暴露出来的 text node
-  if (IS_CHROME || IS_FIREFOX) {
-    DomEditor.cleanExposedTexNodeInSelectionBlock(editor)
-  }
+      // Ensure we insert text with the marks the user was actually seeing
+      if (placeholderMarks !== undefined) {
+        EDITOR_TO_USER_MARKS.set(editor, editor.marks)
+        editor.marks = placeholderMarks
+      }
 
-  // 在中文输入法下，浏览器的默认行为会使一些dom产生不可逆的变化
-  // 比如在 Safari 中 url 后面输入，初始是 a > span > spans
-  // 输入后变成 span > span > a
-  // 因此需要设置新的 key 来强刷整行
-  const start = Range.isBackward(selection) ? selection.focus : selection.anchor
-  const [paragraph] = Editor.node(editor, [start.path[0]])
+      Editor.insertText(editor, event.data)
 
-  for (let i = 0; i < start.path.length; i++) {
-    const [node] = Editor.node(editor, start.path.slice(0, i + 1))
-    if (Element.isElement(node)) {
-      if (((IS_SAFARI || IS_FIREFOX) && node.type === 'link') || node.type === 'code') {
-        DomEditor.setNewKey(paragraph)
-        break
+      const userMarks = EDITOR_TO_USER_MARKS.get(editor)
+      EDITOR_TO_USER_MARKS.delete(editor)
+      if (userMarks !== undefined) {
+        editor.marks = userMarks
       }
     }
-  }
-
-  const { data } = event
-  if (!data) return
-
-  // 检查 maxLength -【注意】这里只处理拼音输入的 maxLength 限制。其他限制，在插件 with-max-length.ts 中处理
-  const { maxLength } = editor.getConfig()
-  if (maxLength) {
-    const leftLengthOfMaxLength = DomEditor.getLeftLengthOfMaxLength(editor)
-    if (leftLengthOfMaxLength < data.length) {
-      const domRange = DomEditor.toDOMRange(editor, selection)
-      domRange.startContainer.textContent = EDITOR_TO_TEXT.get(editor) || ''
-      if (leftLengthOfMaxLength > 0) {
-        // 剩余长度 >0 ，但小于 data 长度，截取一部分插入
-        Editor.insertText(editor, data.slice(0, leftLengthOfMaxLength))
-      }
-      textarea.changeViewState() // 重新定位光标
-    } else {
-      Editor.insertText(editor, data)
-    }
-  } else {
-    Editor.insertText(editor, data)
-  }
-
-  // 检查拼音输入是否夸 DOM 节点了，解决 wangEditor-v5/issues/47
-  if (!IS_SAFARI) {
-    setTimeout(() => {
-      const { selection } = editor
-      if (selection == null) return
-      const oldStartContainer = EDITOR_TO_START_CONTAINER.get(editor) // 拼音输入开始时的 text node
-      if (oldStartContainer == null) return
-      const curStartContainer = DomEditor.toDOMRange(editor, selection).startContainer // 拼音输入结束时的 text node
-      if (curStartContainer === oldStartContainer) {
-        // 拼音输入的开始和结束，都在同一个 text node ，则不做处理
-        return
-      }
-      // 否则，拼音输入的开始和结束，不是同一个 text node ，则将第一个 text node 重新设置 text
-      oldStartContainer.textContent = EDITOR_TO_TEXT.get(editor) || ''
-    })
   }
 }

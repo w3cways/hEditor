@@ -3,14 +3,14 @@
  * @author wangfupeng
  */
 
-import { Editor, Transforms, Range } from 'slate'
+import { Editor, Transforms, Range, Node, Element } from 'slate'
 import { DomEditor } from '../../editor/dom-editor'
 import { IDomEditor } from '../../editor/interface'
 import TextArea from '../TextArea'
-import { hasEditableTarget } from '../helpers'
-import { DOMStaticRange } from '../../utils/dom'
+import { hasEditableTarget, isDOMEventHandled } from '../helpers'
+import { DOMStaticRange, DOMText } from '../../utils/dom'
 import { HAS_BEFORE_INPUT_SUPPORT } from '../../utils/ua'
-import { EDITOR_TO_CAN_PASTE } from '../../utils/weak-maps'
+import { EDITOR_TO_CAN_PASTE, EDITOR_TO_USER_SELECTION } from '../../utils/weak-maps'
 
 // 补充 beforeInput event 的属性
 interface BeforeInputEventType {
@@ -22,41 +22,127 @@ interface BeforeInputEventType {
 }
 
 function handleBeforeInput(e: Event, textarea: TextArea, editor: IDomEditor) {
+  console.log('handleBeforeInput', e)
   const event = e as Event & BeforeInputEventType
   const { readOnly } = editor.getConfig()
 
   if (!HAS_BEFORE_INPUT_SUPPORT) return // 有些浏览器完全不支持 beforeInput ，会用 keypress 和 keydown 兼容
   if (readOnly) return
+  if (isDOMEventHandled(event)) return
   if (!hasEditableTarget(editor, event.target)) return
 
   const { selection } = editor
   const { inputType: type } = event
   const data = event.dataTransfer || event.data || undefined
 
+  console.warn('event.inputType', event.inputType, textarea.isComposing)
   // These two types occur while a user is composing text and can't be
   // cancelled. Let them through and wait for the composition to end.
-  if (type === 'insertCompositionText' || type === 'deleteCompositionText') {
+
+  const isCompositionChange = type === 'insertCompositionText' || type === 'deleteCompositionText'
+  if (isCompositionChange && textarea.isComposing) {
     return
   }
 
-  // 阻止默认行为，劫持所有的富文本输入
-  event.preventDefault()
+  let native = false
+  if (
+    type === 'insertText' &&
+    selection &&
+    Range.isCollapsed(selection) &&
+    // Only use native character insertion for single characters a-z or space for now.
+    // Long-press events (hold a + press 4 = ä) to choose a special character otherwise
+    // causes duplicate inserts.
+    event.data &&
+    event.data.length === 1 &&
+    /[a-z ]/i.test(event.data) &&
+    // Chrome has issues correctly editing the start of nodes: https://bugs.chromium.org/p/chromium/issues/detail?id=1249405
+    // When there is an inline element, e.g. a link, and you select
+    // right after it (the start of the next node).
+    selection.anchor.offset !== 0
+  ) {
+    native = true
+
+    // Skip native if there are marks, as
+    // `insertText` will insert a node, not just text.
+    if (editor.marks) {
+      native = false
+    }
+
+    // Chrome also has issues correctly editing the end of anchor elements: https://bugs.chromium.org/p/chromium/issues/detail?id=1259100
+    // Therefore we don't allow native events to insert text at the end of anchor nodes.
+    const { anchor } = selection
+
+    const [node, offset] = DomEditor.toDOMPoint(editor, anchor)
+    const anchorNode = node.parentElement?.closest('a')
+
+    const window = DomEditor.getWindow(editor)
+
+    if (native && anchorNode && DomEditor.hasDOMNode(editor, anchorNode)) {
+      // Find the last text node inside the anchor.
+      const lastText = window?.document
+        .createTreeWalker(anchorNode, NodeFilter.SHOW_TEXT)
+        .lastChild() as DOMText | null
+
+      if (lastText === node && lastText.textContent?.length === offset) {
+        native = false
+      }
+    }
+
+    // Chrome has issues with the presence of tab characters inside elements with whiteSpace = 'pre'
+    // causing abnormal insert behavior: https://bugs.chromium.org/p/chromium/issues/detail?id=1219139
+    if (
+      native &&
+      node.parentElement &&
+      window?.getComputedStyle(node.parentElement)?.whiteSpace === 'pre'
+    ) {
+      const block = Editor.above(editor, {
+        at: anchor.path,
+        match: n => Element.isElement(n) && Editor.isBlock(editor, n),
+      })
+
+      if (block && Node.string(block[0]).includes('\t')) {
+        native = false
+      }
+    }
+  }
 
   // COMPAT: For the deleting forward/backward input types we don't want
   // to change the selection because it is the range that will be deleted,
   // and those commands determine that for themselves.
   if (!type.startsWith('delete') || type.startsWith('deleteBy')) {
-    const [targetRange] = event.getTargetRanges()
+    const [targetRange] = (event as any).getTargetRanges()
 
     if (targetRange) {
       const range = DomEditor.toSlateRange(editor, targetRange, {
         exactMatch: false,
         suppressThrow: false,
       })
+
       if (!selection || !Range.equals(selection, range)) {
+        native = false
+
+        const selectionRef =
+          !isCompositionChange && editor.selection && Editor.rangeRef(editor, editor.selection)
+
         Transforms.select(editor, range)
+
+        if (selectionRef) {
+          EDITOR_TO_USER_SELECTION.set(editor, selectionRef)
+        }
       }
     }
+  }
+
+  // Composition change types occur while a user is composing text and can't be
+  // cancelled. Let them through and wait for the composition to end.
+  if (isCompositionChange) {
+    return
+  }
+
+  console.log('native', native)
+
+  if (!native) {
+    event.preventDefault()
   }
 
   // COMPAT: If the selection is expanded, even if the command seems like
@@ -142,10 +228,22 @@ function handleBeforeInput(e: Event, textarea: TextArea, editor: IDomEditor) {
         // 这里处理非纯文本（如 html 图片文件等）的粘贴。对于纯文本的粘贴，使用 paste 事件
         editor.insertData(data)
       } else if (typeof data === 'string') {
-        Editor.insertText(editor, data)
+        if (native) {
+          textarea.deferredOperations.push(() => Editor.insertText(editor, data))
+        } else {
+          Editor.insertText(editor, data)
+        }
       }
       break
     }
+  }
+
+  // Restore the actual user section if nothing manually set it.
+  const toRestore = EDITOR_TO_USER_SELECTION.get(editor)?.unref()
+  EDITOR_TO_USER_SELECTION.delete(editor)
+
+  if (toRestore && (!editor.selection || !Range.equals(editor.selection, toRestore))) {
+    Transforms.select(editor, toRestore)
   }
 }
 

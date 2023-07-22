@@ -3,7 +3,7 @@
  * @author wangfupeng
  */
 
-import { Editor } from 'slate'
+import { Editor, Element } from 'slate'
 import { DOMRange, DOMNode, isDOMNode } from '../utils/dom'
 import { IDomEditor } from '../editor/interface'
 import { DomEditor } from '../editor/dom-editor'
@@ -45,7 +45,7 @@ export function isTargetInsideNonReadonlyVoid(
   if (readOnly) return false
 
   const slateNode = hasTarget(editor, target) && DomEditor.toSlateNode(editor, target)
-  return Editor.isVoid(editor, slateNode)
+  return Element.isElement(slateNode) && Editor.isVoid(editor, slateNode)
 }
 
 /**
@@ -59,6 +59,25 @@ export function hasTarget(editor: IDomEditor, target: EventTarget | null): targe
  * Check if a DOM event is overrode by a handler.
  */
 export function isDOMEventHandled(event: Event, handler?: (event: Event) => void | boolean) {
+  if (!handler) {
+    return false
+  }
+
+  // The custom event handler may return a boolean to specify whether the event
+  // shall be treated as being handled or not.
+  const shouldTreatEventAsHandled = handler(event)
+
+  if (shouldTreatEventAsHandled != null) {
+    return shouldTreatEventAsHandled
+  }
+
+  return event.defaultPrevented
+}
+
+/**
+ * Check if a DOM event is overrode by a handler.
+ */
+export function isEventHandled(event: Event, handler?: (event: Event) => void | boolean) {
   if (!handler) {
     return false
   }

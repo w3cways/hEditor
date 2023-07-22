@@ -40,11 +40,11 @@ function triggerMenuHotKey(editor: IDomEditor, event: KeyboardEvent) {
 
 function handleOnKeydown(e: Event, textarea: TextArea, editor: IDomEditor) {
   const event = e as KeyboardEvent
-  const { selection } = editor
+
   const { readOnly } = editor.getConfig()
 
   if (readOnly) return
-  if (textarea.isComposing) return
+
   if (!hasEditableTarget(editor, event.target)) return
 
   // 触发 menu 快捷键
@@ -57,21 +57,40 @@ function handleOnKeydown(e: Event, textarea: TextArea, editor: IDomEditor) {
     return
   }
 
+  // COMPAT: The composition end event isn't fired reliably in all browsers,
+  // so we sometimes might end up stuck in a composition state even though we
+  // aren't composing any more.
+  if (textarea.isComposing && event.isComposing === false) {
+    console.log(1111)
+    textarea.isComposing = false
+  }
+
+  if (textarea.isComposing) return
+
+  const { selection } = editor
+  const element = editor.children[selection !== null ? selection.focus.path[0] : 0]
+  // const isRTL = getDirection(Node.string(element)) === 'rtl'
+
   // COMPAT: Since we prevent the default behavior on
   // `beforeinput` events, the browser doesn't think there's ever
   // any history stack to undo or redo, so we have to manage these
   // hotkeys ourselves. (2019/11/06)
   if (Hotkeys.isRedo(event)) {
     preventDefault(event)
-    if (typeof editor.redo === 'function') {
-      editor.redo()
+    const maybeHistoryEditor: any = editor
+
+    if (typeof maybeHistoryEditor.redo === 'function') {
+      maybeHistoryEditor.redo()
     }
+
     return
   }
   if (Hotkeys.isUndo(event)) {
     preventDefault(event)
-    if (typeof editor.undo === 'function') {
-      editor.undo()
+    const maybeHistoryEditor: any = editor
+
+    if (typeof maybeHistoryEditor.undo === 'function') {
+      maybeHistoryEditor.undo()
     }
     return
   }

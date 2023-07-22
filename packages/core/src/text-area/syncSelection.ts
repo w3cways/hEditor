@@ -46,7 +46,7 @@ export function editorSelectionToDOM(textarea: TextArea, editor: IDomEditor, foc
   }
 
   // If the DOM selection is in the editor and the editor selection is already correct, we're done.
-  if (hasDomSelection && hasDomSelectionInEditor && selection) {
+  if (hasDomSelection && hasDomSelectionInEditor && selection && !focus) {
     const slateRange = DomEditor.toSlateRange(editor, domSelection, {
       exactMatch: true,
 
@@ -90,7 +90,7 @@ export function editorSelectionToDOM(textarea: TextArea, editor: IDomEditor, foc
   if (selection && !DomEditor.hasRange(editor, selection)) {
     editor.selection = DomEditor.toSlateRange(editor, domSelection, {
       exactMatch: false,
-      suppressThrow: false,
+      suppressThrow: true,
     })
     return
   }
@@ -99,6 +99,7 @@ export function editorSelectionToDOM(textarea: TextArea, editor: IDomEditor, foc
   textarea.isUpdatingSelection = true
 
   const newDomRange = selection && DomEditor.toDOMRange(editor, selection)
+  console.log(111111, newDomRange, selection)
   if (newDomRange) {
     if (Range.isBackward(selection!)) {
       domSelection.setBaseAndExtent(
@@ -188,10 +189,17 @@ export function DOMSelectionToEditor(textarea: TextArea, editor: IDomEditor) {
   if (anchorNodeSelectable && focusNodeSelectable) {
     const range = DomEditor.toSlateRange(editor, domSelection, {
       exactMatch: false,
-      suppressThrow: false,
+      suppressThrow: true,
     })
-    Transforms.select(editor, range)
-  } else {
+
+    if (range) {
+      if (!textarea.isComposing) {
+        Transforms.select(editor, range)
+      }
+    }
+  }
+  // Deselect the editor if the dom selection is not selectable in readonly mode
+  if (config.readOnly && !focusNodeSelectable) {
     Transforms.deselect(editor)
   }
 }

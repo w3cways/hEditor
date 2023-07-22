@@ -14,7 +14,7 @@ export type ElementWithId = Element & { id: string }
 /**
  * 扩展 slate Editor 接口
  */
-export interface IDomEditor extends Editor {
+export interface IDomEditor extends Omit<Editor, 'id'> {
   // data 相关（粘贴、拖拽等）
   insertData: (data: DataTransfer) => void
   setFragmentData: (data: Pick<DataTransfer, 'getData' | 'setData'>) => void

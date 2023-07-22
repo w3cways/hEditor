@@ -36,7 +36,7 @@ export function genDefaultToolbarKeys() {
     'fontFamily',
     'lineHeight',
     '|',
-    'bulletedList',
+    // 'bulletedList',
     'numberedList',
     'todo',
     {
@@ -101,7 +101,7 @@ export function genSimpleToolbarKeys() {
     'bgColor',
     'clearStyle',
     '|',
-    'bulletedList',
+    // 'bulletedList',
     'numberedList',
     'todo',
     'justifyLeft',
