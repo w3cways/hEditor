@@ -22,7 +22,6 @@ interface BeforeInputEventType {
 }
 
 function handleBeforeInput(e: Event, textarea: TextArea, editor: IDomEditor) {
-  console.log('handleBeforeInput', e)
   const event = e as Event & BeforeInputEventType
   const { readOnly } = editor.getConfig()
 
@@ -35,7 +34,6 @@ function handleBeforeInput(e: Event, textarea: TextArea, editor: IDomEditor) {
   const { inputType: type } = event
   const data = event.dataTransfer || event.data || undefined
 
-  console.warn('event.inputType', event.inputType, textarea.isComposing)
   // These two types occur while a user is composing text and can't be
   // cancelled. Let them through and wait for the composition to end.
 
@@ -138,8 +136,6 @@ function handleBeforeInput(e: Event, textarea: TextArea, editor: IDomEditor) {
   if (isCompositionChange) {
     return
   }
-
-  console.log('native', native)
 
   if (!native) {
     event.preventDefault()

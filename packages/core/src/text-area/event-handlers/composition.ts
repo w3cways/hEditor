@@ -38,7 +38,6 @@ function checkPrevNode(editor: IDomEditor, selection: Range) {
         selection.focus.offset === 0
       ) {
         //上个节点是inline 且是void,且选区超过2行,且当前selection的起点位置为0
-        console.log(111111, JSON.stringify(selection))
         return true
       }
       return false
@@ -59,7 +58,6 @@ export function handleCompositionStart(
   textarea: TextArea,
   editor: IDomEditor
 ) {
-  console.log('handleCompositionStart', e)
   if (DomEditor.hasSelectableTarget(editor, e.target)) {
     textarea.isComposing = true
 
@@ -71,9 +69,7 @@ export function handleCompositionStart(
         if (flag) {
           Editor.insertText(editor, ' ')
           textarea.hasTempSelection = true
-          console.log('插入一个空格')
         }
-        console.log('deleteFragment')
         Editor.deleteFragment(editor)
         Promise.resolve().then(() => {
           // deleteFragment 会在一个 Promise 后更新 dom，导致浏览器选区不正确
@@ -110,7 +106,6 @@ export function handleCompositionStart(
  * @param editor editor
  */
 export function handleCompositionUpdate(event: Event, textarea: TextArea, editor: IDomEditor) {
-  console.log('handleCompositionUpdate', event)
   if (!hasEditableTarget(editor, event.target)) return
 
   textarea.isComposing = true
@@ -127,7 +122,6 @@ export function handleCompositionEnd(
   textarea: TextArea,
   editor: IDomEditor
 ) {
-  console.warn('handleCompositionEnd', event)
   if (DomEditor.hasSelectableTarget(editor, event.target)) {
     if (textarea.isComposing) {
       textarea.isComposing = false
@@ -135,7 +129,6 @@ export function handleCompositionEnd(
 
     if (textarea.hasTempSelection) {
       Editor.deleteBackward(editor)
-      console.log('删除空格')
       textarea.hasTempSelection = false
     }
 

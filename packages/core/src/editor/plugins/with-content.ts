@@ -63,8 +63,6 @@ export const withContent = <T extends Editor>(editor: T) => {
   e.apply = (op: Operation) => {
     const matches: [Path, Key][] = []
 
-    console.warn('apply', op.type)
-
     switch (op.type) {
       case 'insert_text':
       case 'remove_text':
@@ -76,7 +74,6 @@ export const withContent = <T extends Editor>(editor: T) => {
 
       case 'set_selection': {
         // Selection was manually set, don't restore the user selection after the change.
-        console.error(op, e)
         EDITOR_TO_USER_SELECTION.get(e)?.unref()
         EDITOR_TO_USER_SELECTION.delete(e)
         break

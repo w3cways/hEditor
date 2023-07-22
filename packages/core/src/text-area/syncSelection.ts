@@ -99,7 +99,6 @@ export function editorSelectionToDOM(textarea: TextArea, editor: IDomEditor, foc
   textarea.isUpdatingSelection = true
 
   const newDomRange = selection && DomEditor.toDOMRange(editor, selection)
-  console.log(111111, newDomRange, selection)
   if (newDomRange) {
     if (Range.isBackward(selection!)) {
       domSelection.setBaseAndExtent(

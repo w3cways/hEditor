@@ -61,7 +61,6 @@ function handleOnKeydown(e: Event, textarea: TextArea, editor: IDomEditor) {
   // so we sometimes might end up stuck in a composition state even though we
   // aren't composing any more.
   if (textarea.isComposing && event.isComposing === false) {
-    console.log(1111)
     textarea.isComposing = false
   }
 

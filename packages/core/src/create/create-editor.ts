@@ -97,7 +97,7 @@ export default function (option: Partial<ICreateOption>) {
       if ($scroll.height() < 300) {
         let info = '编辑区域高度 < 300px 这可能会导致 modal hoverbar 定位异常'
         info += '\nTextarea height < 300px . This may be cause modal and hoverbar position error'
-        console.warn(info, $scroll)
+        // console.warn(info, $scroll)
       }
     })
 
