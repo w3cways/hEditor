@@ -66,5 +66,6 @@
   },
   "devDependencies": {
     "@types/is-hotkey": "^0.1.2"
-  }
+  },
+  "gitHead": "24db014002dc12e930dd47ca77356dc70965941b"
 }
