@@ -1,3 +1,6 @@
+# w3cways-editor
+
+基于wangEditor 5做了二次开发，解决中文输入法下的各种问题，只保留core 、 basic-modules 、editor3个最基本模块
 # wangEditor 5
 
 [English](./README-en.md)
