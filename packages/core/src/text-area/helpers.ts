@@ -3,7 +3,7 @@
  * @author wangfupeng
  */
 
-import { Editor, Element } from 'slate'
+import { Editor, Element, Node } from 'slate'
 import { DOMRange, DOMNode, isDOMNode } from '../utils/dom'
 import { IDomEditor } from '../editor/interface'
 import { DomEditor } from '../editor/dom-editor'
@@ -91,4 +91,13 @@ export function isEventHandled(event: Event, handler?: (event: Event) => void | 
   }
 
   return event.defaultPrevented
+}
+
+export function handleSelectedVoidElement(editor, selection) {
+  const currentNode = Node.parent(editor, editor.selection.anchor.path)
+  const dom = DomEditor.toDOMNode(editor, currentNode)
+  if (Editor.isVoid(editor, currentNode) && dom.getAttribute('contenteditable') === 'false') {
+    //不可编辑且是void
+    Editor.deleteForward(editor)
+  }
 }

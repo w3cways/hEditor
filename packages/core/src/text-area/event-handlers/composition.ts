@@ -7,7 +7,7 @@ import { Editor, Range, Element, Transforms, Path, Node } from 'slate'
 import { IDomEditor } from '../../editor/interface'
 import { DomEditor } from '../../editor/dom-editor'
 import TextArea from '../TextArea'
-import { hasEditableTarget } from '../helpers'
+import { hasEditableTarget, handleSelectedVoidElement } from '../helpers'
 import { IS_SAFARI, IS_CHROME, IS_FIREFOX } from '../../utils/ua'
 import { DOMNode } from '../../utils/dom'
 import { hidePlaceholder } from '../place-holder'
@@ -144,6 +144,10 @@ export function handleCompositionEnd(
       if (placeholderMarks !== undefined) {
         EDITOR_TO_USER_MARKS.set(editor, editor.marks)
         editor.marks = placeholderMarks
+      }
+
+      if (editor.selection) {
+        handleSelectedVoidElement(editor, editor.selection)
       }
 
       Editor.insertText(editor, event.data)

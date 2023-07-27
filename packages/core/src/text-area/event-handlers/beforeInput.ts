@@ -7,7 +7,7 @@ import { Editor, Transforms, Range, Node, Element } from 'slate'
 import { DomEditor } from '../../editor/dom-editor'
 import { IDomEditor } from '../../editor/interface'
 import TextArea from '../TextArea'
-import { hasEditableTarget, isDOMEventHandled } from '../helpers'
+import { hasEditableTarget, isDOMEventHandled, handleSelectedVoidElement } from '../helpers'
 import { DOMStaticRange, DOMText } from '../../utils/dom'
 import { HAS_BEFORE_INPUT_SUPPORT } from '../../utils/ua'
 import { EDITOR_TO_CAN_PASTE, EDITOR_TO_USER_SELECTION } from '../../utils/weak-maps'
@@ -227,6 +227,10 @@ function handleBeforeInput(e: Event, textarea: TextArea, editor: IDomEditor) {
         if (native) {
           textarea.deferredOperations.push(() => Editor.insertText(editor, data))
         } else {
+          if (selection) {
+            handleSelectedVoidElement(editor, selection)
+          }
+
           Editor.insertText(editor, data)
         }
       }
