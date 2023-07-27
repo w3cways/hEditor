@@ -1,6 +1,6 @@
 {
   "name": "@w3cways-editor/editor",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "Web rich text editor, Web 富文本编辑器",
   "keywords": [
     "w3cways-editor",
@@ -52,7 +52,7 @@
     "@uppy/core": "^2.1.1",
     "@uppy/xhr-upload": "^2.0.3",
     "@w3cways-editor/basic-modules": "^1.3.2",
-    "@w3cways-editor/core": "^1.3.5",
+    "@w3cways-editor/core": "^1.3.6",
     "dom7": "^3.0.0",
     "is-hotkey": "^0.2.0",
     "lodash.camelcase": "^4.3.0",

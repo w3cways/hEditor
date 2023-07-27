@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.6](https://github.com/w3cways/w3cways-editor/compare/@w3cways-editor/core@1.3.5...@w3cways-editor/core@1.3.6) (2023-07-27)
+
+
+### Bug Fixes
+
+* void元素不可编辑的判断条件 ([bbd093f](https://github.com/w3cways/w3cways-editor/commit/bbd093f20630bcc2ce19842f09cb6092a2dd79d9))
+
+
+
+
+
 ## [1.3.5](https://github.com/w3cways/w3cways-editor/compare/@w3cways-editor/core@1.3.2...@w3cways-editor/core@1.3.5) (2023-07-27)
 
 **Note:** Version bump only for package @w3cways-editor/core
