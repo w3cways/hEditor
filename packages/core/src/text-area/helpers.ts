@@ -96,7 +96,7 @@ export function isEventHandled(event: Event, handler?: (event: Event) => void | 
 export function handleSelectedVoidElement(editor, selection) {
   const currentNode = Node.parent(editor, editor.selection.anchor.path)
   const dom = DomEditor.toDOMNode(editor, currentNode)
-  if (Editor.isVoid(editor, currentNode) && dom.getAttribute('contenteditable') === 'false') {
+  if (Editor.isVoid(editor, currentNode) && dom.getAttribute('contenteditable') !== 'true') {
     //不可编辑且是void
     Editor.deleteForward(editor)
   }
