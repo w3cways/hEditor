@@ -157,6 +157,8 @@ export function handleCompositionEnd(
       if (userMarks !== undefined) {
         editor.marks = userMarks
       }
+    } else {
+      return
     }
   }
 }
